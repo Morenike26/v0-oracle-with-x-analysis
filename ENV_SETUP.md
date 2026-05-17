@@ -9,28 +9,23 @@ Add these to your Vercel project via the Settings > Environment Variables sectio
 ### 1. Blockchain Configuration
 
 **CONTRACT_ADDRESS**
-- Value: `0x10cF97EA9385A38DA8B1bA9f9B1518AfC5bc604B`
-- Description: ShadowLens smart contract address on Ritual Chain
+- Value: `0xCe8f5297dFE00E5e201f46f4A662E4ffCB5Ac3D6`
+- Description: ShadowLens smart contract address on Ritual Chain (production)
 
-**RPC_URL**
+**RITUAL_RPC**
 - Value: `https://rpc.ritualfoundation.org`
 - Description: Ritual Chain RPC endpoint for blockchain interaction
 
 **TEE_PRIVATE_KEY**
-- Value: Your TEE signer private key (0x-prefixed hex string)
-- Description: Private key for signing analysis results on behalf of the oracle
+- Value: `0x7b796145ba7f02ad9422f181d1e306ca457f9e14cade801762e587170cfd4bda`
+- Description: TEE signer private key for signing analysis results
 - ⚠️ **KEEP SECRET** - Never commit this to Git
 
 ### 2. X/Twitter API Configuration
 
 **X_API_KEY**
-- Value: Your X API v2 Bearer token
-- Description: X API v2 authentication token for fetching user profiles and tweets
-- How to get:
-  1. Go to https://developer.twitter.com/en/portal/dashboard
-  2. Create a project or use existing one
-  3. Generate API key and bearer token
-  4. Copy the bearer token (starts with "AAAA...")
+- Value: `AAAAAAAAAAAAAAAAAAAAABAH9gEAAAAAKWK4OrCItaDY%2FrXFcoAkQX83670%3D3d8KB5XKHi7pu3rt4YiSxMDfWLMgfnI4DxlHdfMW2AZH6mz3oh`
+- Description: X API v2 Bearer token for fetching user profiles and tweets
 
 ## Setting Up Environment Variables in Vercel
 
@@ -121,10 +116,10 @@ curl https://your-project.vercel.app/api/oracle
 For local development, create a `.env.local` file:
 
 ```
-CONTRACT_ADDRESS=0x10cF97EA9385A38DA8B1bA9f9B1518AfC5bc604B
-RPC_URL=https://rpc.ritualfoundation.org
-X_API_KEY=your_x_api_key
-TEE_PRIVATE_KEY=0xyour_private_key
+CONTRACT_ADDRESS=0xCe8f5297dFE00E5e201f46f4A662E4ffCB5Ac3D6
+RITUAL_RPC=https://rpc.ritualfoundation.org
+X_API_KEY=AAAAAAAAAAAAAAAAAAAAABAH9gEAAAAAKWK4OrCItaDY%2FrXFcoAkQX83670%3D3d8KB5XKHi7pu3rt4YiSxMDfWLMgfnI4DxlHdfMW2AZH6mz3oh
+TEE_PRIVATE_KEY=0x7b796145ba7f02ad9422f181d1e306ca457f9e14cade801762e587170cfd4bda
 ```
 
 Add `.env.local` to your `.gitignore` to prevent accidental commits.

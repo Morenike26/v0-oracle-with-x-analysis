@@ -1,51 +1,12 @@
 import { ethers } from 'ethers';
+import CONTRACT_ABI from './contract-abi.json';
 
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x10cF97EA9385A38DA8B1bA9f9B1518AfC5bc604B';
-const RPC_URL = process.env.RPC_URL || 'https://rpc.ritualfoundation.org';
-
-// Contract ABI - AnalysisRequested and fulfill functions
-const CONTRACT_ABI = [
-  {
-    type: 'event',
-    name: 'AnalysisRequested',
-    inputs: [
-      { name: 'requestId', type: 'uint256', indexed: true },
-      { name: 'xHandle', type: 'string', indexed: false },
-      { name: 'requester', type: 'address', indexed: true },
-      { name: 'timestamp', type: 'uint256', indexed: false },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'fulfill',
-    inputs: [
-      { name: 'requestId', type: 'uint256' },
-      { name: 'riskLevel', type: 'uint8' },
-      { name: 'engagementScore', type: 'uint8' },
-      { name: 'postingConsistency', type: 'uint8' },
-      { name: 'contentRiskScore', type: 'uint8' },
-      { name: 'signature', type: 'bytes' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'getRequestStatus',
-    inputs: [{ name: 'requestId', type: 'uint256' }],
-    outputs: [
-      { name: 'xHandle', type: 'string' },
-      { name: 'requester', type: 'address' },
-      { name: 'status', type: 'uint8' },
-      { name: 'timestamp', type: 'uint256' },
-    ],
-    stateMutability: 'view',
-  },
-];
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0xCe8f5297dFE00E5e201f46f4A662E4ffCB5Ac3D6';
+const RPC_URL = process.env.RITUAL_RPC || 'https://rpc.ritualfoundation.org';
 
 interface AnalysisResult {
   requestId: string;
-  xHandle: string;
+  handle: string;
   riskLevel: number;
   engagementScore: number;
   postingConsistency: number;
@@ -80,6 +41,7 @@ export async function getPendingRequests(blockRange: number = 50) {
     const currentBlock = await provider.getBlockNumber();
     const fromBlock = Math.max(0, currentBlock - blockRange);
 
+    // Filter for AnalysisRequested events (requestId indexed, handle not indexed)
     const filter = contract.filters.AnalysisRequested();
     const events = await contract.queryFilter(filter, fromBlock, currentBlock);
 
@@ -91,22 +53,24 @@ export async function getPendingRequests(blockRange: number = 50) {
         const args = event.args;
         if (!args) continue;
 
+        // AnalysisRequested(bytes32 requestId, address requester, string handle, ExecutionPath path)
         const requestId = args[0]?.toString() || '';
-        const xHandle = args[1]?.toString() || '';
-        const requester = args[2]?.toString() || '';
-        const timestamp = args[3]?.toString() || '';
+        const requester = args[1]?.toString() || '';
+        const handle = args[2]?.toString() || '';
+        const path = args[3]?.toString() || '0';
 
-        // Check request status
-        const status = await contract.getRequestStatus(requestId);
+        // Check request status using getRequest
+        const request = await contract.getRequest(requestId);
         
         // Status: 0 = Pending, 1 = Completed, 2 = Failed
-        if (status[2] === 0) { // Pending status
+        if (request.status === 0) { // Pending status
           requests.push({
             requestId,
-            xHandle,
+            handle,
             requester,
-            timestamp,
+            path: parseInt(path),
             status: 'Pending',
+            createdAt: request.createdAt?.toString() || '',
           });
         } else {
           console.log(`⏭️  Skipping already processed request ${requestId}`);
@@ -131,12 +95,13 @@ export async function submitResult(
   signature: string
 ): Promise<string> {
   try {
-    console.log(`📡 Submitting result for ${result.xHandle} (request ${result.requestId})`);
+    console.log(`📡 Submitting result for ${result.handle} (request ${result.requestId})`);
     
     const provider = getProvider();
-    const contract = getContract(provider);
+    const signer = new ethers.Wallet(process.env.TEE_PRIVATE_KEY!, provider);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-    // Create transaction
+    // Call fulfill with: id, riskLevel, engagementScore, postingConsistency, contentRiskScore, signature
     const tx = await contract.fulfill(
       result.requestId,
       result.riskLevel,

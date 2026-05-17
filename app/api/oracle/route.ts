@@ -42,15 +42,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 2: Process each pending request
-    for (const request of pendingRequests) {
+    for (const req of pendingRequests) {
       const startTime = Date.now();
       try {
-        console.log(`📡 Analyzing @${request.xHandle} (request ${request.requestId})`);
+        console.log(`📡 Analyzing @${req.handle} (request ${req.requestId})`);
 
         // Fetch X profile
         let profile;
         try {
-          profile = await getXUserProfile(request.xHandle);
+          profile = await getXUserProfile(req.handle);
         } catch (error) {
           if ((error as Error).message === 'X_API_RATE_LIMITED') {
             console.log('⏸️  X API rate limited, skipping remaining requests');
@@ -61,11 +61,11 @@ export async function GET(request: NextRequest) {
 
         // If profile not found, create error metrics
         if (!profile) {
-          console.log(`⚠️  Profile not found for @${request.xHandle}, creating error metrics`);
+          console.log(`⚠️  Profile not found for @${req.handle}, creating error metrics`);
           const metrics = createErrorMetrics();
           const signature = signAnalysisResult(
-            request.requestId,
-            request.xHandle,
+            req.requestId,
+            req.handle,
             metrics.riskLevel,
             metrics.engagementScore,
             metrics.postingConsistency,
@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
           try {
             await submitResult(
               {
-                requestId: request.requestId,
-                xHandle: request.xHandle,
+                requestId: req.requestId,
+                handle: req.handle,
                 riskLevel: metrics.riskLevel,
                 engagementScore: metrics.engagementScore,
                 postingConsistency: metrics.postingConsistency,
@@ -86,18 +86,18 @@ export async function GET(request: NextRequest) {
             );
 
             results.push({
-              requestId: request.requestId,
-              xHandle: request.xHandle,
+              requestId: req.requestId,
+              handle: req.handle,
               status: 'completed',
               metrics,
               latencyMs: Date.now() - startTime,
             });
           } catch (submitError) {
             const errorMsg = submitError instanceof Error ? submitError.message : 'Unknown error';
-            console.error(`❌ Error processing @${request.xHandle}:`, errorMsg);
+            console.error(`❌ Error processing @${req.handle}:`, errorMsg);
             results.push({
-              requestId: request.requestId,
-              xHandle: request.xHandle,
+              requestId: req.requestId,
+              handle: req.handle,
               status: 'failed',
               error: errorMsg,
               latencyMs: Date.now() - startTime,
@@ -123,8 +123,8 @@ export async function GET(request: NextRequest) {
 
         // Sign result
         const signature = signAnalysisResult(
-          request.requestId,
-          request.xHandle,
+          req.requestId,
+          req.handle,
           metrics.riskLevel,
           metrics.engagementScore,
           metrics.postingConsistency,
@@ -135,8 +135,8 @@ export async function GET(request: NextRequest) {
         try {
           await submitResult(
             {
-              requestId: request.requestId,
-              xHandle: request.xHandle,
+              requestId: req.requestId,
+              handle: req.handle,
               riskLevel: metrics.riskLevel,
               engagementScore: metrics.engagementScore,
               postingConsistency: metrics.postingConsistency,
@@ -145,20 +145,20 @@ export async function GET(request: NextRequest) {
             signature
           );
 
-          console.log(`✅ Result submitted: request ${request.requestId}`);
+          console.log(`✅ Result submitted: request ${req.requestId}`);
           results.push({
-            requestId: request.requestId,
-            xHandle: request.xHandle,
+            requestId: req.requestId,
+            handle: req.handle,
             status: 'completed',
             metrics,
             latencyMs: Date.now() - startTime,
           });
         } catch (submitError) {
           const errorMsg = submitError instanceof Error ? submitError.message : 'Unknown error';
-          console.error(`❌ Error processing @${request.xHandle}:`, errorMsg);
+          console.error(`❌ Error processing @${req.handle}:`, errorMsg);
           results.push({
-            requestId: request.requestId,
-            xHandle: request.xHandle,
+            requestId: req.requestId,
+            handle: req.handle,
             status: 'failed',
             error: errorMsg,
             metrics,
@@ -167,10 +167,10 @@ export async function GET(request: NextRequest) {
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`❌ Error processing @${request.xHandle}:`, errorMsg);
+        console.error(`❌ Error processing request:`, errorMsg);
         results.push({
-          requestId: request.requestId,
-          xHandle: request.xHandle,
+          requestId: req.requestId,
+          handle: req.handle,
           status: 'failed',
           error: errorMsg,
           latencyMs: Date.now() - startTime,
