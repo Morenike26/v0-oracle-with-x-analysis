@@ -1,0 +1,216 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_trustedTEE",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "requestId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "enum ShadowLensAgentConsumer.RiskLevel",
+                "name": "riskLevel",
+                "type": "uint8"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "engagement",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "consistency",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "contentRisk",
+                "type": "uint256"
+            }
+        ],
+        "name": "AnalysisCompleted",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "requestId",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "requester",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "handle",
+                "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "enum ShadowLensAgentConsumer.ExecutionPath",
+                "name": "path",
+                "type": "uint8"
+            }
+        ],
+        "name": "AnalysisRequested",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "id",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "enum ShadowLensAgentConsumer.RiskLevel",
+                "name": "r",
+                "type": "uint8"
+            },
+            {
+                "internalType": "uint256",
+                "name": "e",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "c",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "cr",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bytes",
+                "name": "sig",
+                "type": "bytes"
+            }
+        ],
+        "name": "fulfill",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "id",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getRequest",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "id",
+                        "type": "bytes32"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "requester",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "handle",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "enum ShadowLensAgentConsumer.ExecutionPath",
+                        "name": "path",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "enum ShadowLensAgentConsumer.Status",
+                        "name": "status",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "createdAt",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct ShadowLensAgentConsumer.AnalysisRequest",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "id",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getResult",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "enum ShadowLensAgentConsumer.RiskLevel",
+                        "name": "riskLevel",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "engagementScore",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "postingConsistency",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "contentRiskScore",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "teeHash",
+                        "type": "bytes32"
+                    }
+                ],
+                "internalType": "struct ShadowLensAgentConsumer.AnalysisResult",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
