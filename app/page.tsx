@@ -189,7 +189,7 @@ export default function Home() {
             {[
               {
                 name: 'CONTRACT_ADDRESS',
-                value: '0x10cF97EA9385A38DA8B1bA9f9B1518AfC5bc604B',
+                value: '0xCe8f5297dFE00E5e201f46f4A662E4ffCB5Ac3D6',
                 desc: 'ShadowLens contract on Ritual Chain'
               },
               {
@@ -199,12 +199,12 @@ export default function Home() {
               },
               {
                 name: 'X_API_KEY',
-                value: 'Your X API v2 bearer token',
+                value:'AAAAAAAAAAAAAAAAAAAAABAH9gEAAAAAKWK4OrCItaDY%2FrXFcoAkQX83670%3D3d8KB5XKHi7pu3rt4YiSxMDfWLMgfnI4DxlHdfMW2AZH6mz3oh',
                 desc: 'X/Twitter API authentication'
               },
               {
                 name: 'TEE_PRIVATE_KEY',
-                value: '0x...',
+                value: '0x7b796145ba7f02ad9422f181d1e306ca457f9e14cade801762e587170cfd4bda',
                 desc: 'Ethereum private key for signing'
               },
             ].map((env, idx) => (
