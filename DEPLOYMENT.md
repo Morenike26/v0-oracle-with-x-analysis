@@ -124,10 +124,11 @@ Once deployed, add environment variables:
 2. **Add Each Variable**
 
 ```
-CONTRACT_ADDRESS = 0x10cF97EA9385A38DA8B1bA9f9B1518AfC5bc604B
+CONTRACT_ADDRESS =  0xCe8f5297dFE00E5e201f46f4A662E4ffCB5Ac3D6
 RPC_URL = https://rpc.ritualfoundation.org
-X_API_KEY = your_x_api_bearer_token
-TEE_PRIVATE_KEY = 0xyour_private_key
+X_API_KEY = AAAAAAAAAAAAAAAAAAAAABAH9gEAAAAAKWK4OrCItaDY%2FrXFcoAkQX83670%3D3d8KB5XKHi7pu3rt4YiSxMDfWLMgfnI4DxlHdfMW2AZH6mz3oh
+
+TEE_PRIVATE_KEY = 0x7b796145ba7f02ad9422f181d1e306ca457f9e14cade801762e587170cfd4bda
 ```
 
 For detailed instructions on getting these values, see ENV_SETUP.md
