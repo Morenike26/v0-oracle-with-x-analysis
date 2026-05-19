@@ -121,7 +121,7 @@ Complete checklist for deploying the ShadowLens Oracle to production.
 
 **Variable 1: CONTRACT_ADDRESS**
 - Name: `CONTRACT_ADDRESS`
-- Value: `0x10cF97EA9385A38DA8B1bA9f9B1518AfC5bc604B`
+- Value: `0xCe8f5297dFE00E5e201f46f4A662E4ffCB5Ac3D6`
 - Environment: Production
 - [ ] Save
 
@@ -132,7 +132,8 @@ Complete checklist for deploying the ShadowLens Oracle to production.
 - [ ] Save
 
 **Variable 3: X_API_KEY**
-- Name: `X_API_KEY`
+- Name: `AAAAAAAAAAAAAAAAAAAAABAH9gEAAAAAKWK4OrCItaDY%2FrXFcoAkQX83670%3D3d8KB5XKHi7pu3rt4YiSxMDfWLMgfnI4DxlHdfMW2AZH6mz3oh
+`
 - Value: Your X API v2 bearer token (starts with "AAAA...")
   - [ ] Get from https://developer.twitter.com/en/portal/dashboard
   - [ ] Create project if needed
@@ -141,7 +142,7 @@ Complete checklist for deploying the ShadowLens Oracle to production.
 - [ ] Save
 
 **Variable 4: TEE_PRIVATE_KEY**
-- Name: `TEE_PRIVATE_KEY`
+- Name: `0x7b796145ba7f02ad9422f181d1e306ca457f9e14cade801762e587170cfd4bda`
 - Value: Your Ethereum private key (0x-prefixed hex)
   - [ ] Generate new Ethereum private key
   - [ ] Keep secure backup in password manager
