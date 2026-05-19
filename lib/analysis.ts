@@ -21,6 +21,30 @@ export interface AnalysisMetrics {
     tweets: number;
     tweetsPerDay: number;
     hasRecentTweets: boolean;
+// lib/analysis.ts  (or wherever this file is)
+import {
+  getAccountAgeDays,
+  calculateTweetsPerDay,
+  getAverageEngagement,
+  scanForSpamKeywords,
+  countExcessiveHashtags,
+  countExcessiveMentions,
+  hasEngagementAnomalies,
+  XUserProfile,
+  XTweet,
+} from './xapi';
+
+export interface AnalysisMetrics {
+  engagementScore: number;
+  postingConsistency: number;
+  contentRiskScore: number;
+  riskLevel: number;
+  details: {
+    accountAgeDays: number;
+    followers: number;
+    tweets: number;
+    tweetsPerDay: number;
+    hasRecentTweets: boolean;
     spamViolations: number;
     excessiveHashtags: number;
     excessiveMentions: number;
@@ -28,224 +52,159 @@ export interface AnalysisMetrics {
   };
 }
 
+const clamp = (n: number, min = 0, max = 100) =>
+  Math.max(min, Math.min(max, Math.round(Number.isFinite(n) ? n : 0)));
+
+/**
+ * Safe getters
+ */
+function safeProfileMetrics(profile: XUserProfile | null | undefined) {
+  const pm = profile?.public_metrics ?? {};
+  return {
+    followers: Math.max(0, Number(pm.followers_count ?? 0) || 0),
+    tweets: Math.max(0, Number(pm.tweet_count ?? 0) || 0),
+    following: Math.max(0, Number(pm.following_count ?? 0) || 0),
+  };
+}
+
 /**
  * Calculate Engagement Score (0-100)
- * Higher is healthier
  */
-function calculateEngagementScore(profile: XUserProfile): number {
-  const followers = profile.public_metrics.followers_count;
-  const tweets = profile.public_metrics.tweet_count;
+function calculateEngagementScore(profile: XUserProfile | null | undefined): number {
+  const { followers, tweets } = safeProfileMetrics(profile);
 
-  // Edge cases
-  if (followers === 0) {
-    return tweets === 0 ? 10 : 15;
-  }
+  if (followers === 0) return tweets === 0 ? 10 : 15;
+  if (tweets === 0) return 15;
 
-  if (tweets === 0) {
-    return 15;
-  }
+  // Shadowban red flag
+  if (followers < 100 && tweets > 1000) return 25;
 
-  // Shadowban indicator: low followers + high tweets
-  if (followers < 100 && tweets > 1000) {
-    return 25;
-  }
-
-  // Established accounts
   if (followers >= 10000) {
-    return Math.min(100, 60 + followers / 1000);
+    return clamp(60 + followers / 1000);
   }
 
-  // Default formula
-  return Math.min(100, 50 + followers / 1000);
+  return clamp(50 + followers / 1000);
 }
 
 /**
  * Calculate Posting Consistency Score (0-100)
- * Higher means more consistent
  */
-function calculatePostingConsistency(tweets: XTweet[]): number {
-  if (tweets.length === 0) {
-    return 0;
-  }
+function calculatePostingConsistency(tweets: XTweet[] | null | undefined): number {
+  const safeTweets = Array.isArray(tweets) ? tweets.filter(Boolean) : [];
 
-  const tweetsPerDay = calculateTweetsPerDay(tweets);
+  if (safeTweets.length === 0) return 0;
 
-  // Check for recent activity (last 30 days)
+  const tweetsPerDay = calculateTweetsPerDay(safeTweets);
+
   const now = Date.now();
   const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-  const hasRecentTweets = tweets.some(
-    (tweet) => new Date(tweet.created_at).getTime() >= thirtyDaysAgo
-  );
+  const hasRecentTweets = safeTweets.some((tweet) => {
+    const date = tweet?.created_at ? new Date(tweet.created_at).getTime() : 0;
+    return date >= thirtyDaysAgo;
+  });
 
-  if (!hasRecentTweets) {
-    return 10; // No recent tweets
-  }
+  if (!hasRecentTweets) return 10;
 
-  // Ideal range: 1-10 tweets per day
-  if (tweetsPerDay >= 1 && tweetsPerDay <= 10) {
-    return 85;
-  }
-
-  // Very high frequency (spam pattern)
-  if (tweetsPerDay > 20) {
-    return Math.max(0, 85 - (tweetsPerDay - 10) * 2);
-  }
-
-  // Low activity but consistent
-  if (tweetsPerDay > 0 && tweetsPerDay < 1) {
-    return 60;
-  }
+  if (tweetsPerDay >= 1 && tweetsPerDay <= 10) return 85;
+  if (tweetsPerDay > 20) return clamp(85 - (tweetsPerDay - 10) * 2);
+  if (tweetsPerDay > 0 && tweetsPerDay < 1) return 60;
 
   return 50;
 }
 
 /**
  * Calculate Content Risk Score (0-100)
- * Higher means more risky
  */
-function calculateContentRiskScore(tweets: XTweet[], profile: XUserProfile): number {
+function calculateContentRiskScore(tweets: XTweet[] | null | undefined, profile: XUserProfile | null | undefined): number {
+  const safeTweets = Array.isArray(tweets) ? tweets.filter(Boolean) : [];
+  const { followers } = safeProfileMetrics(profile);
+
   let violations = 0;
+  violations += scanForSpamKeywords(safeTweets);
+  violations += countExcessiveHashtags(safeTweets);
+  violations += countExcessiveMentions(safeTweets);
 
-  // Scan for spam keywords
-  violations += scanForSpamKeywords(tweets);
-
-  // Count excessive hashtags
-  violations += countExcessiveHashtags(tweets);
-
-  // Count excessive mentions
-  violations += countExcessiveMentions(tweets);
-
-  // Check engagement anomalies
-  if (hasEngagementAnomalies(tweets, profile.public_metrics.followers_count)) {
+  if (hasEngagementAnomalies(safeTweets, followers)) {
     violations += 2;
   }
 
-  // Base score + violations
   let score = 50 + violations * 5;
-
-  // Cap at 100
-  return Math.min(100, score);
+  return clamp(score);
 }
 
 /**
- * Apply modifiers based on account age
- */
-function applyAgeModifiers(
-  metrics: AnalysisMetrics,
-  accountAgeDays: number
-): AnalysisMetrics {
-  if (accountAgeDays < 7) {
-    // New account modifier
-    metrics.engagementScore *= 0.5;
-    metrics.contentRiskScore += 20;
-    metrics.contentRiskScore = Math.min(100, metrics.contentRiskScore);
-  }
-
-  return metrics;
-}
-
-/**
- * Calculate risk level from averaged metrics
- */
-function calculateRiskLevel(
-  engagementScore: number,
-  postingConsistency: number,
-  contentRiskScore: number
-): number {
-  // Average all metrics
-  const riskAverage = (
-    (100 - engagementScore) +
-    (100 - postingConsistency) +
-    contentRiskScore
-  ) / 3;
-
-  if (riskAverage > 75) {
-    return 3; // High risk
-  } else if (riskAverage > 50) {
-    return 2; // Medium risk
-  } else {
-    return 1; // Low risk
-  }
-}
-
-/**
- * Analyze an X handle for shadowban risk
+ * Main Analysis Function
  */
 export async function analyzeXHandle(
-  profile: XUserProfile,
-  tweets: XTweet[]
+  profile: XUserProfile | null | undefined,
+  tweets: XTweet[] | null | undefined
 ): Promise<AnalysisMetrics> {
-  console.log(`📊 Analyzing @${profile.username}`);
+  if (!profile) {
+    console.warn('⚠️ No profile provided to analyzeXHandle');
+    return createErrorMetrics();
+  }
+
+  console.log(`📊 Analyzing @${profile.username || 'unknown'}`);
 
   const accountAgeDays = getAccountAgeDays(profile.created_at);
-  const tweetsPerDay = calculateTweetsPerDay(tweets);
+  const { followers, tweets: totalTweets } = safeProfileMetrics(profile);
+
+  const safeTweets = Array.isArray(tweets) ? tweets.filter(Boolean) : [];
+
+  const tweetsPerDay = calculateTweetsPerDay(safeTweets);
 
   const now = Date.now();
   const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-  const hasRecentTweets = tweets.some(
-    (tweet) => new Date(tweet.created_at).getTime() >= thirtyDaysAgo
+  const hasRecentTweets = safeTweets.some((tweet) =>
+    tweet?.created_at ? new Date(tweet.created_at).getTime() >= thirtyDaysAgo : false
   );
 
-  // Calculate base metrics
   let engagementScore = calculateEngagementScore(profile);
-  const postingConsistency = calculatePostingConsistency(tweets);
-  let contentRiskScore = calculateContentRiskScore(tweets, profile);
+  const postingConsistency = calculatePostingConsistency(safeTweets);
+  let contentRiskScore = calculateContentRiskScore(safeTweets, profile);
 
-  // Create metrics object
   let metrics: AnalysisMetrics = {
     engagementScore: Math.round(engagementScore),
     postingConsistency: Math.round(postingConsistency),
     contentRiskScore: Math.round(contentRiskScore),
-    riskLevel: 3, // Will be calculated after modifiers
+    riskLevel: 1,
     details: {
       accountAgeDays,
-      followers: profile.public_metrics.followers_count,
-      tweets: profile.public_metrics.tweet_count,
+      followers,
+      tweets: totalTweets,
       tweetsPerDay: Math.round(tweetsPerDay * 100) / 100,
       hasRecentTweets,
-      spamViolations: scanForSpamKeywords(tweets),
-      excessiveHashtags: countExcessiveHashtags(tweets),
-      excessiveMentions: countExcessiveMentions(tweets),
-      engagementAnomalies: hasEngagementAnomalies(
-        tweets,
-        profile.public_metrics.followers_count
-      ),
+      spamViolations: scanForSpamKeywords(safeTweets),
+      excessiveHashtags: countExcessiveHashtags(safeTweets),
+      excessiveMentions: countExcessiveMentions(safeTweets),
+      engagementAnomalies: hasEngagementAnomalies(safeTweets, followers),
     },
   };
 
   // Apply age modifiers
-  metrics = applyAgeModifiers(metrics, accountAgeDays);
+  if (accountAgeDays < 7) {
+    metrics.engagementScore = Math.round(metrics.engagementScore * 0.5);
+    metrics.contentRiskScore = clamp(metrics.contentRiskScore + 20);
+  }
 
-  // Ensure scores stay in bounds
-  metrics.engagementScore = Math.max(0, Math.min(100, Math.round(metrics.engagementScore)));
-  metrics.postingConsistency = Math.max(0, Math.min(100, Math.round(metrics.postingConsistency)));
-  metrics.contentRiskScore = Math.max(0, Math.min(100, Math.round(metrics.contentRiskScore)));
-
-  // Calculate final risk level
-  metrics.riskLevel = calculateRiskLevel(
-    metrics.engagementScore,
-    metrics.postingConsistency,
+  // Final risk level
+  const riskAverage = (
+    (100 - metrics.engagementScore) +
+    (100 - metrics.postingConsistency) +
     metrics.contentRiskScore
-  );
+  ) / 3;
 
-  console.log(
-    `✅ Analysis complete: Risk Level ${metrics.riskLevel}, Engagement: ${metrics.engagementScore}, Consistency: ${metrics.postingConsistency}, Content Risk: ${metrics.contentRiskScore}`
-  );
+  metrics.riskLevel = riskAverage > 75 ? 3 : riskAverage > 50 ? 2 : 1;
 
   return metrics;
 }
 
-/**
- * Analyze X handle when profile is not found (error case)
- */
 export function createErrorMetrics(): AnalysisMetrics {
-  console.log('❌ Creating error metrics for missing profile');
-
   return {
     engagementScore: 0,
     postingConsistency: 0,
     contentRiskScore: 100,
-    riskLevel: 3, // High risk for unknown/missing profiles
+    riskLevel: 3,
     details: {
       accountAgeDays: 0,
       followers: 0,
@@ -258,4 +217,4 @@ export function createErrorMetrics(): AnalysisMetrics {
       engagementAnomalies: false,
     },
   };
-}
+      }
